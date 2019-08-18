@@ -1,20 +1,3 @@
-"""
-
-Project: swagger-resful
-
-File Name: example_api
-
-Author: Zachary Romer, zach@scharp.org
-
-Creation Date: 8/18/19
-
-Version: 1.0
-
-Purpose:
-
-Special Notes:
-
-"""
 from flask import Flask
 from flask_restplus import Api
 from flask_restplus import Resource as PlusResource
@@ -24,9 +7,6 @@ from converter.schema2model import convert_schema_to_model
 
 app = Flask(__name__)
 app.config.from_object('app.conf.config-dev')
-#app.wsgi_app = ProxyFix(app.wsgi_app)
-###################################
-# Wrap the Api with swagger.docs. It is a thin wrapper around the Api class that adds some swagger smarts
 api = Api(app, version='1.0', title='RestPlus Docs')
 
 ns_batch = api.namespace('batch', description='batch operations')
