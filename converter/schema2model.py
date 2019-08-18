@@ -41,7 +41,8 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
                                           description=v_attr.metadata.get('description', None))
 
         elif isinstance(v_attr, fields.Dict):
-            converted = convert_dict_field(v_attr, description)
+            description = convert_dict_field_description(v_attr, description)
+            converted =  get_conversion(type(v_attr))
             model_fields[var] = converted(required=required, default=default, description=description)
 
         else:
@@ -51,7 +52,7 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
     model = api.model(name, model_fields)
     return model
 
-def convert_dict_field(v_attr: fields.Dict, description) -> PlusDict:
+def convert_dict_field_description(v_attr: fields.Dict, description) -> PlusDict:
     dict_description = []
     if 'keys' in v_attr.metadata.keys():
         dict_description.append(f'keys={get_conversion(type(v_attr.metadata["keys"]))}')
@@ -61,7 +62,8 @@ def convert_dict_field(v_attr: fields.Dict, description) -> PlusDict:
         description = ','.join(dict_description)
     else:
         description += f'| Dict types: {",".join(dict_description)}'
-    return get_conversion(type(v_attr))
+    return description
+
 
 
 def get_default(field):

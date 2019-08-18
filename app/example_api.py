@@ -15,14 +15,12 @@ Purpose:
 Special Notes:
 
 """
-import attr
 from flask import Flask
-from flask_restplus import Api, Model
+from flask_restplus import Api
 from flask_restplus import Resource as PlusResource
-from flask_restplus import fields as PlusFields
-from marshmallow import fields, Schema, utils
+from marshmallow import fields, Schema
 
-from app.app2 import convert_schema_to_model
+from converter.schema2model import convert_schema_to_model
 
 app = Flask(__name__)
 app.config.from_object('app.conf.config-dev')

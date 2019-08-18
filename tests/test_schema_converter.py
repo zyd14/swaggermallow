@@ -21,7 +21,7 @@ from flask import Flask
 from flask_restplus import Api, fields as PlusFields
 from marshmallow import Schema, fields
 
-
+from converter.schema2model import convert_schema_to_model
 
 
 
@@ -58,7 +58,24 @@ def test_nominal_model_conversion():
     #app.config.from_object('app.conf.config-dev')
     api = Api(app, version='1.0', title='RestPlus Docs')
 
-    from app.app2 import convert_schema_to_model
+
     model = convert_schema_to_model(api, ModelInputSchema(), name='Something')
     assert set(model.keys()) == set(ModelInputSchema().fields.keys())
     assert set(model.__schema__['properties'].keys()) == set(ModelInputSchema().fields.keys())
+
+def test_nested_model_conversion():
+
+    app = Flask(__name__)
+    api = Api(app, version='1', title='Tester')
+
+    class NestedSchema(Schema):
+
+        a = fields.String(required=True, description='Yada Yada')
+        b = fields.Nested(InnerSchema(), required=True)
+
+    model = convert_schema_to_model(api, NestedSchema(), name='Nested')
+    assert True
+    assert set(model.keys()) == set(NestedSchema().fields.keys())
+    assert set(model.__schema__['properties'].keys()) == set(NestedSchema().fields.keys())
+
+    assert set(model['b'].nested.keys()) == InnerSchema().fields.keys()
