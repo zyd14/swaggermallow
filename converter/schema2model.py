@@ -6,9 +6,6 @@ from marshmallow import fields, Schema, utils
 class PlusDict(PlusFields.Raw):
     pass
 
-class PlusSchema(PlusFields.Raw):
-    pass
-
 def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
     m_fields = mschema.declared_fields
     model_fields = {}
@@ -19,7 +16,7 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
         description = v_attr.metadata.get('description', None)
 
         if 'restplus_field' in v_attr.metadata:
-            model_fields[var] = v_attr.metadata['restplus_field']
+            model_fields[var] = v_attr.metadata['restplus_field'](required=required, default=default, description=description)
             continue
 
         # Otherwise we will attempt to convert marshmallow fields defined in the schema passed to us into flask_restplus fields
@@ -57,7 +54,8 @@ def convert_dict_field_description(v_attr: fields.Dict, description) -> PlusDict
     if 'keys' in v_attr.metadata.keys():
         dict_description.append(f'keys={get_conversion(type(v_attr.metadata["keys"]))}')
     if 'values' in v_attr.metadata.keys():
-        dict_description.append(f'values={get_conversion(type(v_attr.metadata["values"]))}')
+        converted = get_conversion(type(v_attr.metadata["values"]))
+        dict_description.append(f'values={converted}')
     if description is None:
         description = ','.join(dict_description)
     else:
@@ -73,16 +71,21 @@ def get_default(field):
 def get_conversion(m_field) -> PlusFields:
     mapping = {
         fields.Integer: PlusFields.Integer,
+        fields.Int: PlusFields.Integer,
         fields.String: PlusFields.String,
+        fields.Str: PlusFields.String,
         fields.Boolean: PlusFields.Boolean,
+        fields.Bool: PlusFields.Boolean,
         fields.Decimal: PlusFields.Decimal,
         fields.Date: PlusFields.Date,
         fields.DateTime: PlusFields.DateTime,
         fields.List: PlusFields.List,
         fields.Nested: PlusFields.Nested,
         fields.Url: PlusFields.Url,
+        fields.URL: PlusFields.Url,
         fields.Float: PlusFields.Float,
-        fields.Dict: PlusDict
+        fields.Dict: PlusDict,
+        fields.Raw: PlusFields.Raw,
     }
 
     try:
