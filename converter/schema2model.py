@@ -7,7 +7,12 @@ class PlusDict(PlusFields.Raw):
     pass
 
 def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
-    m_fields = mschema.declared_fields
+
+    if hasattr(mschema, 'declared_fields'):
+        m_fields = mschema.declared_fields
+    elif hasattr(mschema, '_declared_fields'):
+        m_fields = mschema._declared_fields
+
     model_fields = {}
 
     for var, v_attr in m_fields.items():
@@ -29,13 +34,29 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
                                                 default=default,
                                                 description=description)
         elif isinstance(v_attr, fields.List):
-            contained = get_conversion(type(v_attr.container))
             container = get_conversion(type(v_attr))
-            model_fields[var] = container(contained(required=v_attr.container.required,
-                                                    default=get_default(v_attr.container),
-                                                    description=v_attr.container.metadata.get('description', None)),
-                                          default=get_default(v_attr),
-                                          description=v_attr.metadata.get('description', None))
+            # Field is a List, determine what type of objects it contains
+            if isinstance(v_attr.container, fields.Nested):
+                # Field is a list of Schema-defined objects
+                inner_model = convert_schema_to_model(api, v_attr.container.nested, str(v_attr.container.nested)),
+                nested_class = get_conversion(type(v_attr.container))
+                nested_inner = nested_class(inner_model[0],
+                                            required=v_attr.container.required,
+                                            default=get_default(v_attr.container),
+                                            description=v_attr.container.metadata.get('description', None))
+                model_fields[var] = container(nested_inner,
+                                              required=v_attr.required,
+                                              default=get_default(v_attr),
+                                              description=v_attr.metadata.get('description', None))
+            else:
+                # Field is a list of regular Marshmallow fields objects
+                contained = get_conversion(type(v_attr.container))
+                model_fields[var] = container(contained(required=v_attr.container.required,
+                                                        default=get_default(v_attr.container),
+                                                        description=v_attr.container.metadata.get('description', None)),
+                                              required=v_attr.required,
+                                              default=get_default(v_attr),
+                                              description=v_attr.metadata.get('description', None))
 
         elif isinstance(v_attr, fields.Dict):
             description = convert_dict_field_description(v_attr, description)
