@@ -1,12 +1,13 @@
 import attr
 
 from flask import Flask
-from flask_restful import  Api, Resource
+from flask_restful import Resource
 from flask_restful_swagger import swagger
 from marshmallow import Schema, fields
-from flask_restplus import Api as rApi
+from flask_restplus import Api
 from flask_restplus import Resource as PlusResource
 from flask_restplus import fields as PlusFields
+from converter.schema2model import convert_schema_to_model
 import json
 
 app = Flask(__name__)
@@ -26,18 +27,16 @@ class ModelOutput:
     x = attr.ib()  # type: int
     y = attr.ib()  # type: str
 
-@swagger.model
 class ModelInputSchema(Schema):
 
     a = fields.Integer()
     b = fields.String(default='asdf')
-    resource_fields = {
-        'a': PlusFields.Integer(required=True, description='a field', example='blah'),
-        'b': PlusFields.String(required=True),
-        'c': PlusFields.Boolean(required=True)
-    }
     #resource_model = api.model('ModelInputSchema', resource_fields)
 
+@swagger.model
+class ModelInput:
+
+    resource_fields = convert_schema_to_model(api, ModelInputSchema(), 'ModelInput')
 
 @swagger.model
 class ModelOutputSchema(Schema):
@@ -61,7 +60,7 @@ class SwaggIt(Resource):
                 "description": 'a description',
                 "required": True,
                 "allowMultiple": False,
-                "dataType": ModelInputSchema.__name__,
+                "dataType": ModelInput.__name__,
                 "paramType": "body"
             }
         ],
@@ -86,10 +85,7 @@ api.add_resource(SwaggIt, '/swagg')
 #     'a': PlusFields.Integer(required=True),
 #     'num': PlusFields.String(required=False)
 # })
-# test_marshmallow_model = rapi.model('MarshModel', ModelInputSchema.resource_fields)
 
-class AnotherTest(PlusResource):
-    pass
 
 if __name__ == '__main__':
     api.app.run()
