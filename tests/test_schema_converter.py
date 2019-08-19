@@ -1,24 +1,4 @@
-"""
-
-Project: swagger-resful
-
-File Name: test_schema_converter
-
-Author: Zachary Romer, zach@scharp.org
-
-Creation Date: 8/18/19
-
-Version: 1.0
-
-Purpose:
-
-Special Notes:
-
-"""
-
-import attr
-from flask import Flask
-from flask_restplus import Api, fields as PlusFields
+from flask_restplus import fields as PlusFields
 from marshmallow import Schema, fields
 
 from converter.schema2model import convert_schema_to_model, get_conversion, PlusDict

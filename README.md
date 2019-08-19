@@ -23,3 +23,4 @@ This example API defines its request and response
 schemas as Marshmallow Schemas, but uses the `schema2model.convert_schema_to_model()` method to create identical 
 flask-restplus Model objects for use with `@api.expect` and `@api.response` calls.
 
+This library does not seem to produce models which are compatible with `flask-restplus-swagger` `@swagger` decorators at this time. 
