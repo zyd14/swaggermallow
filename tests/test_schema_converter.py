@@ -1,7 +1,7 @@
-from flask_restplus import fields as PlusFields
+from flask_restplus import fields as PlusFields, Resource
 from marshmallow import Schema, fields
 
-from converter.schema2model import convert_schema_to_model, get_conversion, PlusDict
+from converter.schema2model import convert_schema_to_model, get_conversion, PlusDict, patch_api
 
 
 def test_nominal_model_conversion(api_fixture):
@@ -99,3 +99,18 @@ def test_restplus_field_descriptors(api_fixture):
     assert isinstance(model['tod'], PlusFields.String)
     assert isinstance(model['kelly'], PlusFields.DateTime)
 
+def test_nominal_expect_patch(api_fixture):
+    class ModelInputSchema(Schema):
+        a = fields.Integer(required=True)
+        b = fields.String(default='asdf', metadata={'restplus_field': PlusFields.String(required=True)})
+
+    api_fixture = patch_api(api_fixture)
+
+    class TestResource(Resource):
+
+        @api_fixture.expect(ModelInputSchema)
+        def get(self):
+            return {200, 'Test'}
+    ns_test = api_fixture.namespace('test', description='asdf')
+    ns_test.add_resource(TestResource, '/resource')
+    assert ns_test.apis[0].models
