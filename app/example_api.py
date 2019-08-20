@@ -40,10 +40,6 @@ class ModelOutputSchema(Schema):
     d = fields.List(fields.String())
     e = fields.Dict(keys=fields.String(), values=fields.Integer())
 
-#modelInputSchema = convert_schema_to_model(api, ModelInputSchema(), 'ModelInputSchema')
-#modelOutputSchema = convert_schema_to_model(api, ModelOutputSchema(), 'ModelOutputSchema')
-#modelRsponse = convert_schema_to_model(api, ResponseSchema(), 'ModelResponse')
-#badResponseModel = convert_schema_to_model(api, BadResponse(), 'BadResponse')
 
 api = patch_api(api)
 
@@ -73,4 +69,6 @@ ns_batch.add_resource(Swagg, '/swagg')
 ns_user.add_resource(Another, '/another')
 
 if __name__ == '__main__':
+    pass
     api.app.run(debug=True)
+    pass
