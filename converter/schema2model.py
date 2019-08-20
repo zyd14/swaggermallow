@@ -1,13 +1,50 @@
 from flask_restplus import Api, Model
 from flask_restplus import fields as PlusFields
 from marshmallow import fields, Schema, utils
-
+from marshmallow.schema import BaseSchema
 
 class PlusDict(PlusFields.Raw):
     pass
 
+
+def patch_api(api: Api):
+    """ Reroute Api.expect() function to use the schema converter if """
+    api._expect = api.expect
+
+    def expect_patch(self, *inputs, **kwargs):
+        if isinstance(self, Schema):
+            model = convert_schema_to_model(api, self, self.__class__.__name__)
+            inputs = list(inputs)[0] = model
+        return api._expect(self, *inputs, **kwargs)
+
+    api.expect = expect_patch
+
+    api._response = api.response
+
+    def response_patch(self, *args, model=None, **kwargs):
+        # if isinstance(model, Schema):
+        restplus_model = convert_schema_to_model(api, model, model.__class__.__name__)
+        inputs = list(inputs)[0] = restplus_model
+        return api._response(self, *args, model=restplus_model, **kwargs)
+
+    api.response = response_patch
+    return api
+
+
 def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
-    m_fields = mschema.declared_fields
+
+    if not name:
+        name = str(mschema)
+
+    if isinstance(mschema, Schema) and not mschema == type(Schema):
+        m_fields = mschema.declared_fields
+    elif mschema == type(Schema):
+        m_fields = mschema._declared_fields
+    elif issubclass(mschema, BaseSchema.Meta) or mschema.Meta == BaseSchema.Meta:
+        m_fields = mschema._declared_fields
+    else:
+        return api.model(name, mschema)
+
     model_fields = {}
 
     for var, v_attr in m_fields.items():

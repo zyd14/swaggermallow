@@ -3,7 +3,7 @@ from flask_restplus import Api
 from flask_restplus import Resource as PlusResource
 from marshmallow import fields, Schema
 
-from converter.schema2model import convert_schema_to_model
+from converter.schema2model import convert_schema_to_model, patch_api
 
 app = Flask(__name__)
 app.config.from_object('app.conf.config-dev')
@@ -40,19 +40,21 @@ class ModelOutputSchema(Schema):
     d = fields.List(fields.String())
     e = fields.Dict(keys=fields.String(), values=fields.Integer())
 
-modelInputSchema = convert_schema_to_model(api, ModelInputSchema(), 'ModelInputSchema')
-modelOutputSchema = convert_schema_to_model(api, ModelOutputSchema(), 'ModelOutputSchema')
-modelRsponse = convert_schema_to_model(api, ResponseSchema(), 'ModelResponse')
-badResponseModel = convert_schema_to_model(api, BadResponse(), 'BadResponse')
+#modelInputSchema = convert_schema_to_model(api, ModelInputSchema(), 'ModelInputSchema')
+#modelOutputSchema = convert_schema_to_model(api, ModelOutputSchema(), 'ModelOutputSchema')
+#modelRsponse = convert_schema_to_model(api, ResponseSchema(), 'ModelResponse')
+#badResponseModel = convert_schema_to_model(api, BadResponse(), 'BadResponse')
+
+api = patch_api(api)
 
 class Swagg(PlusResource):
 
 
     __schema__ = ModelInputSchema
 
-    @api.expect(modelOutputSchema)
-    @api.response(201, 'Success Response', model=modelRsponse)
-    @api.response(400, 'Bad Request', model=badResponseModel)
+    @api.expect(ModelOutputSchema)
+    @api.response(201, 'Success Response', model=ResponseSchema)
+    @api.response(400, 'Bad Request', model=BadResponse)
     def post(self):
         """ Some info here"""
         return {200, 'Success'}
@@ -61,7 +63,7 @@ class Another(PlusResource):
 
     __schema__ = ModelInputSchema
 
-    @api.expect(convert_schema_to_model(api, ModelOutputSchema(), 'ModelOutputSchema'))
+    @api.expect(ModelOutputSchema())
 
     def post(self):
         """ This info comes from the docstring"""
