@@ -1,7 +1,8 @@
+from typing import Union
+
 from flask_restplus import Api, Model
 from flask_restplus import fields as PlusFields
 from marshmallow import fields, Schema, utils
-from marshmallow.schema import BaseSchema
 
 class PlusDict(PlusFields.Raw):
     pass
@@ -9,25 +10,38 @@ class PlusDict(PlusFields.Raw):
 
 def patch_api(api: Api):
     """ Reroute Api.expect() function to use the schema converter if """
-    api._expect = api.expect
+    api._restplus_expect = api.expect
 
     def expect_patch(self, *inputs, **kwargs):
         if isinstance(self, Schema):
             model = convert_schema_to_model(api, self, self.__class__.__name__)
             inputs = list(inputs)[0] = model
-        return api._expect(self, *inputs, **kwargs)
+        return api._restplus_expect(self, *inputs, **kwargs)
 
     api.expect = expect_patch
 
-    api._response = api.response
+    api._restplus_response = api.response
 
     def response_patch(self, *args, model=None, **kwargs):
-        # if isinstance(model, Schema):
         restplus_model = convert_schema_to_model(api, model, model.__class__.__name__)
-        inputs = list(inputs)[0] = restplus_model
-        return api._response(self, *args, model=restplus_model, **kwargs)
+        return api._restplus_response(self, *args, model=restplus_model, **kwargs)
 
     api.response = response_patch
+
+    def register_method_parameters(self, method, matching_args: Union[dict, list]):
+        if isinstance(matching_args, dict):
+            for name, description in matching_args.items():
+                param_wrapper = self.param(name, description, _in='query')
+                param_wrapper(method)
+        elif isinstance(matching_args, list):
+            for name in matching_args:
+                param_wrapper = self.param(name, None, _in='query')
+                param_wrapper(method)
+        return self
+
+    from functools import partial
+    api.register_method_parameters = partial(register_method_parameters, self=api)
+
     return api
 
 
@@ -37,6 +51,10 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
         m_fields = mschema.declared_fields
     elif hasattr(mschema, '_declared_fields'):
         m_fields = mschema._declared_fields
+    elif isinstance(mschema, Model):
+        return mschema
+    else:
+        raise Exception(f"Unable to convert type {type(mschema)} to Model.  Expected type {type(Schema)}")
 
     model_fields = {}
 
