@@ -7,12 +7,14 @@ from marshmallow import fields, Schema, utils
 class PlusDict(PlusFields.Raw):
     pass
 
-
 def patch_api(api: Api):
-    """ Reroute Api.expect() function to use the schema converter if """
+    """ Wrap flask-restplus swagger decorator calls with functions that will convert Marshmallow Schemas to flask-restplus
+        Model objects before passing on the Model to the wrapped function
+    """
     api._restplus_expect = api.expect
 
     def expect_patch(self, *inputs, **kwargs):
+        """ Reroute Api.expect() function to use the schema converter if provided object is a Marshmallow Schema"""
         if isinstance(self, Schema):
             model = convert_schema_to_model(api, self, self.__class__.__name__)
             inputs = list(inputs)[0] = model
@@ -23,12 +25,20 @@ def patch_api(api: Api):
     api._restplus_response = api.response
 
     def response_patch(self, *args, model=None, **kwargs):
+        """ Reroute Api.patch() function to use the schema -> model converter"""
         restplus_model = convert_schema_to_model(api, model, model.__class__.__name__)
         return api._restplus_response(self, *args, model=restplus_model, **kwargs)
 
     api.response = response_patch
 
     def register_method_parameters(self, method, matching_args: Union[dict, list]):
+        """ Provides a way to call the function wrapped by Api.param with a list of parameters.  This allows user to
+            use their Model or Schema's .keys() attribute directly in a call to register_method_parameters, and have all
+            parameters registered at once instead of having to call @api.param() on every parameter.
+
+            Collection passed to this function can be a list of parameter names, or a dict of parameter names as keys
+            and descriptions as values.
+        """
         if isinstance(matching_args, dict):
             for name, description in matching_args.items():
                 param_wrapper = self.param(name, description, _in='query')
@@ -46,7 +56,8 @@ def patch_api(api: Api):
 
 
 def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
-
+    """ Convert a Marshmallow Schema to a flask-restplus Model object.  If 'restplus_field' is found in the metadata
+        of any field and the value is found to be of type Model, the value will be used as the Model field"""
     if hasattr(mschema, 'declared_fields'):
         m_fields = mschema.declared_fields
     elif hasattr(mschema, '_declared_fields'):
@@ -64,8 +75,9 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
         description = v_attr.metadata.get('description', None)
 
         if 'restplus_field' in v_attr.metadata:
-            model_fields[var] = v_attr.metadata['restplus_field'](required=required, default=default, description=description)
-            continue
+            if isinstance(v_attr.metadata['restplus_field'], PlusFields.Raw):
+                model_fields[var] = v_attr.metadata['restplus_field'](required=required, default=default, description=description)
+                continue
 
         # Otherwise we will attempt to convert marshmallow fields defined in the schema passed to us into flask_restplus fields
         # in order to be able to be used in restplus models for swagger documentation.  Tricky cases are fields such as
@@ -113,6 +125,7 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
     model = api.model(name, model_fields)
     return model
 
+
 def convert_dict_field_description(v_attr: fields.Dict, description) -> PlusDict:
     dict_description = []
     if 'keys' in v_attr.metadata.keys():
@@ -125,7 +138,6 @@ def convert_dict_field_description(v_attr: fields.Dict, description) -> PlusDict
     else:
         description += f'| Dict types: {",".join(dict_description)}'
     return description
-
 
 
 def get_default(field):
@@ -142,6 +154,7 @@ def get_conversion(m_field) -> PlusFields:
         fields.Bool: PlusFields.Boolean,
         fields.Decimal: PlusFields.Decimal,
         fields.Date: PlusFields.Date,
+        fields.LocalDateTime: PlusFields.DateTime,
         fields.DateTime: PlusFields.DateTime,
         fields.List: PlusFields.List,
         fields.Nested: PlusFields.Nested,
@@ -150,6 +163,7 @@ def get_conversion(m_field) -> PlusFields:
         fields.Float: PlusFields.Float,
         fields.Dict: PlusDict,
         fields.Raw: PlusFields.Raw,
+        fields.Email: PlusFields.String
     }
 
     try:

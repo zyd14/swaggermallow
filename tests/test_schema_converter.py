@@ -13,14 +13,13 @@ def test_nominal_model_conversion(api_fixture):
     assert set(model.keys()) == set(ModelInputSchema().fields.keys())
     assert set(model.__schema__['properties'].keys()) == set(ModelInputSchema().fields.keys())
 
-def test_nested_model_conversion(api_fixture):
 
+def test_nested_model_conversion(api_fixture):
     class InnerSchema(Schema):
         meow = fields.Integer(required=True)
         wolf = fields.String(required=True)
 
     class NestedSchema(Schema):
-
         a = fields.String(required=True, description='Yada Yada')
         b = fields.Nested(InnerSchema(), required=True)
 
@@ -30,8 +29,8 @@ def test_nested_model_conversion(api_fixture):
 
     assert set(model['b'].nested.keys()) == InnerSchema().fields.keys()
 
-def test_complex_schema_conversion(api_fixture):
 
+def test_complex_schema_conversion(api_fixture):
     class InnerSchema(Schema):
         meow = fields.Integer(required=True)
         wolf = fields.String(required=True)
@@ -56,10 +55,11 @@ def test_complex_schema_conversion(api_fixture):
 
     # Test Dict conversion
     assert isinstance(model['e'], PlusDict)
-    assert model['e'].description.lower() == """keys=<class 'flask_restplus.fields.string'>,values=<class 'flask_restplus.fields.integer'>"""
+    assert model[
+               'e'].description.lower() == """keys=<class 'flask_restplus.fields.string'>,values=<class 'flask_restplus.fields.integer'>"""
+
 
 def test_unknown_type_default_to_raw_field(api_fixture):
-
     unsupported_types = [fields.Email,
                          fields.Function,
                          fields.ValidatedField,
@@ -77,8 +77,8 @@ def test_unknown_type_default_to_raw_field(api_fixture):
         model = convert_schema_to_model(api_fixture, BlackberryPie(), name="Blackberry Pie")
         assert type(model['crust']) == PlusFields.Raw
 
-def test_constant(api_fixture):
 
+def test_constant(api_fixture):
     class TestBob(Schema):
         bob = fields.Constant('a')
 
@@ -87,8 +87,8 @@ def test_constant(api_fixture):
     model = convert_schema_to_model(api_fixture, TestBob(), name='TestBob')
     assert isinstance(model['bob'], PlusFields.Raw)
 
-def test_restplus_field_descriptors(api_fixture):
 
+def test_restplus_field_descriptors(api_fixture):
     class TestBob(Schema):
         bob = fields.Integer(restplus_field=PlusFields.Integer)
         tod = fields.Email(restplus_field=PlusFields.String)
@@ -98,6 +98,7 @@ def test_restplus_field_descriptors(api_fixture):
     assert isinstance(model['bob'], PlusFields.Integer)
     assert isinstance(model['tod'], PlusFields.String)
     assert isinstance(model['kelly'], PlusFields.DateTime)
+
 
 def test_nominal_expect_patch(api_fixture):
     class ModelInputSchema(Schema):
@@ -111,6 +112,7 @@ def test_nominal_expect_patch(api_fixture):
         @api_fixture.expect(ModelInputSchema)
         def get(self):
             return {200, 'Test'}
+
     ns_test = api_fixture.namespace('test', description='asdf')
     ns_test.add_resource(TestResource, '/resource')
     assert ns_test.apis[0].models
