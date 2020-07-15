@@ -1,11 +1,36 @@
-from typing import Union
+from typing import Union, Type
 
 from flask_restplus import Api, Model
 from flask_restplus import fields as PlusFields
 from marshmallow import fields, Schema, utils
+from marshmallow.schema import SchemaMeta
+
 
 class PlusDict(PlusFields.Raw):
     pass
+
+
+FIELD_MAPPING = {
+        fields.Integer: PlusFields.Integer,
+        fields.Int: PlusFields.Integer,
+        fields.String: PlusFields.String,
+        fields.Str: PlusFields.String,
+        fields.Boolean: PlusFields.Boolean,
+        fields.Bool: PlusFields.Boolean,
+        fields.Decimal: PlusFields.Decimal,
+        fields.Date: PlusFields.Date,
+        fields.LocalDateTime: PlusFields.DateTime,
+        fields.DateTime: PlusFields.DateTime,
+        fields.List: PlusFields.List,
+        fields.Nested: PlusFields.Nested,
+        fields.Url: PlusFields.Url,
+        fields.URL: PlusFields.Url,
+        fields.Float: PlusFields.Float,
+        fields.Dict: PlusDict,
+        fields.Raw: PlusFields.Raw,
+        fields.Email: PlusFields.String
+    }
+
 
 def patch_api(api: Api):
     """ Wrap flask-restplus swagger decorator calls with functions that will convert Marshmallow Schemas to flask-restplus
@@ -15,7 +40,7 @@ def patch_api(api: Api):
 
     def expect_patch(self, *inputs, **kwargs):
         """ Reroute Api.expect() function to use the schema converter if provided object is a Marshmallow Schema"""
-        if isinstance(self, Schema):
+        if isinstance(self, Schema) or isinstance(self, SchemaMeta):
             model = convert_schema_to_model(api, self, self.__class__.__name__)
             inputs = list(inputs)[0] = model
         return api._restplus_expect(self, *inputs, **kwargs)
@@ -55,7 +80,7 @@ def patch_api(api: Api):
     return api
 
 
-def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
+def convert_schema_to_model(api: Api, mschema: Schema, name: str = '') -> Model:
     """ Convert a Marshmallow Schema to a flask-restplus Model object.  If 'restplus_field' is found in the metadata
         of any field and the value is found to be of type Model, the value will be used as the Model field"""
     if hasattr(mschema, 'declared_fields'):
@@ -76,7 +101,8 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
 
         if 'restplus_field' in v_attr.metadata:
             if isinstance(v_attr.metadata['restplus_field'], PlusFields.Raw):
-                model_fields[var] = v_attr.metadata['restplus_field'](required=required, default=default, description=description)
+                model_fields[var] = v_attr.metadata['restplus_field'](required=required, default=default,
+                                                                      description=description)
                 continue
 
         # Otherwise we will attempt to convert marshmallow fields defined in the schema passed to us into flask_restplus fields
@@ -115,7 +141,7 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
 
         elif isinstance(v_attr, fields.Dict):
             description = convert_dict_field_description(v_attr, description)
-            converted =  get_conversion(type(v_attr))
+            converted = get_conversion(type(v_attr))
             model_fields[var] = converted(required=required, default=default, description=description)
 
         else:
@@ -127,6 +153,7 @@ def convert_schema_to_model(api: Api, mschema: Schema, name: str='') -> Model:
 
 
 def convert_dict_field_description(v_attr: fields.Dict, description) -> PlusDict:
+    """ Create proper description string for dictionaries"""
     dict_description = []
     if 'keys' in v_attr.metadata.keys():
         dict_description.append(f'keys={get_conversion(type(v_attr.metadata["keys"]))}')
@@ -144,32 +171,15 @@ def get_default(field):
     return None if isinstance(field.default, utils._Missing) else field.default
 
 
-def get_conversion(m_field) -> PlusFields:
-    mapping = {
-        fields.Integer: PlusFields.Integer,
-        fields.Int: PlusFields.Integer,
-        fields.String: PlusFields.String,
-        fields.Str: PlusFields.String,
-        fields.Boolean: PlusFields.Boolean,
-        fields.Bool: PlusFields.Boolean,
-        fields.Decimal: PlusFields.Decimal,
-        fields.Date: PlusFields.Date,
-        fields.LocalDateTime: PlusFields.DateTime,
-        fields.DateTime: PlusFields.DateTime,
-        fields.List: PlusFields.List,
-        fields.Nested: PlusFields.Nested,
-        fields.Url: PlusFields.Url,
-        fields.URL: PlusFields.Url,
-        fields.Float: PlusFields.Float,
-        fields.Dict: PlusDict,
-        fields.Raw: PlusFields.Raw,
-        fields.Email: PlusFields.String
-    }
-
+def get_conversion(m_field: Type[fields.Field]) -> PlusFields:
+    """ Retrieve rest-plus field that best corresponds to a given marshmallow field.  If field is not found in mapping then
+        return a rest-plus Raw model field.
+    """
     try:
-        return mapping[m_field]
+        return FIELD_MAPPING[m_field]
     except KeyError:
         import os
         if os.getenv('FLASK_DEBUG', False):
-            print(f"Could not interpret a flask_restplus field mapping for marshmallow field type {m_field}. Defaulting to a flast_restplus Raw field type.")
+            print(
+                f"Could not interpret a flask_restplus field mapping for marshmallow field type {m_field}. Defaulting to a flast_restplus Raw field type.")
         return PlusFields.Raw

@@ -2,6 +2,7 @@ from flask import Flask
 from flask_restplus import Api
 import pytest
 
+
 @pytest.fixture
 def api_fixture():
     app = Flask(__name__)

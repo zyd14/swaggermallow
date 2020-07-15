@@ -60,11 +60,9 @@ def test_complex_schema_conversion(api_fixture):
 
 
 def test_unknown_type_default_to_raw_field(api_fixture):
-    unsupported_types = [fields.Email,
-                         fields.Function,
+    unsupported_types = [fields.Function,
                          fields.ValidatedField,
-                         fields.Method,
-                         fields.LocalDateTime,
+                         fields.Method
                          ]
 
     for unknown_type in unsupported_types:
